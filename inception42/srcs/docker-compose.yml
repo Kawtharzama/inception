@@ -1,0 +1,91 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    docker-compose.yml                                 :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: kabu-zee <marvin@42.fr>                    +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2026/06/07 16:09:57 by kabu-zee          #+#    #+#              #
+#    Updated: 2026/06/07 16:10:03 by kabu-zee         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+version: '3.8'
+
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password:
+    file: ../secrets/db_root_password.txt
+  credentials:
+    file: ../secrets/credentials.txt
+  credentials2:
+    file: ../secrets/credentials.txt
+
+
+volumes:
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/kabu-zee/data/wordpress
+
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/kabu-zee/data/mariadb
+
+
+networks:
+  inception_network:
+    driver: bridge
+
+
+services:
+
+  mariadb:
+    build: ./requirements/mariadb
+    container_name: mariadb
+    restart: on-failure
+    env_file: .env
+    secrets:
+      - db_password
+      - db_root_password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - inception_network
+
+  wordpress:
+    build: ./requirements/wordpress
+    container_name: wordpress
+    restart: on-failure
+    env_file: .env
+    secrets:
+      - db_password
+      - credentials
+      - credentials2
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - inception_network
+    depends_on:
+      - mariadb
+
+  nginx:
+    build: ./requirements/nginx
+    container_name: nginx
+    restart: on-failure
+    env_file: .env
+    ports:
+      - "443:443"
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - inception_network
+    depends_on:
+      - wordpress
